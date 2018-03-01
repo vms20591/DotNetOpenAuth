@@ -148,7 +148,7 @@ namespace DotNetOpenAuth.OAuth2 {
 		/// </summary>
 		/// <param name="request">The HTTP request.</param>
 		/// <returns>The HTTP response to send to the client.</returns>
-		public OutgoingWebResponse HandleTokenRequest(HttpRequestBase request = null) {
+		public OutgoingWebResponse HandleTokenRequest(HttpRequestBase request = null, Func<object, object> callback = null) {
 			if (request == null) {
 				request = this.Channel.GetRequestFromContext();
 			}
@@ -165,6 +165,7 @@ namespace DotNetOpenAuth.OAuth2 {
 
 					var successResponseMessage = this.PrepareAccessTokenResponse(requestMessage, accessTokenResult.AllowRefreshToken);
 					successResponseMessage.Lifetime = accessTokenResult.AccessToken.Lifetime;
+                    accessTokenResult.AllowRefreshToken = successResponseMessage.HasRefreshToken;
 
 					var authCarryingRequest = requestMessage as IAuthorizationCarryingRequest;
 					if (authCarryingRequest != null) {
@@ -174,7 +175,12 @@ namespace DotNetOpenAuth.OAuth2 {
 					}
 
 					responseMessage = successResponseMessage;
-				} else {
+
+                    if (callback != null)
+                    {
+                        callback(accessTokenResult);
+                    }
+                } else {
 					responseMessage = new AccessTokenFailedResponse() { Error = Protocol.AccessTokenRequestErrorCodes.InvalidRequest };
 				}
 			} catch (TokenEndpointProtocolException ex) {
@@ -239,7 +245,9 @@ namespace DotNetOpenAuth.OAuth2 {
 					tokenCarryingResponse.AuthorizationDescription = accessTokenResult.AccessToken;
 
 					response = implicitGrantResponse;
-					break;
+
+                    ((EndUserAuthorizationSuccessAccessTokenResponse)response).UtcIssued = accessTokenResult.AccessToken.UtcIssued;
+                    break;
 				case EndUserAuthorizationResponseType.AuthorizationCode:
 					var authCodeResponse = new EndUserAuthorizationSuccessAuthCodeResponseAS(callback, authorizationRequest);
 					IAuthorizationCodeCarryingRequest codeCarryingResponse = authCodeResponse;
