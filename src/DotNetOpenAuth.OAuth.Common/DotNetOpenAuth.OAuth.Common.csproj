@@ -1,11 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), EnlistmentInfo.props))\EnlistmentInfo.props" Condition=" '$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), EnlistmentInfo.props))' != '' " />
+  <Import Project="$(ProjectRoot)tools\DotNetOpenAuth.props" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
   </PropertyGroup>
-  <Import Project="$(ProjectRoot)tools\DotNetOpenAuth.props" />
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DelaySign>false</DelaySign>
+  </PropertyGroup>
   <PropertyGroup>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{115217C5-22CD-415C-A292-0DD0238CDD89}</ProjectGuid>
@@ -16,6 +22,7 @@
   </PropertyGroup>
   <Import Project="$(ProjectRoot)tools\DotNetOpenAuth.Product.props" />
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DefineConstants>TRACE;DEBUG;CLR4;</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
   </PropertyGroup>
@@ -26,7 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DotNetOpenAuth.Core\DotNetOpenAuth.Core.csproj">
-      <Project>{60426312-6AE5-4835-8667-37EDEA670222}</Project>
+      <Project>{60426312-6ae5-4835-8667-37edea670222}</Project>
       <Name>DotNetOpenAuth.Core</Name>
     </ProjectReference>
   </ItemGroup>
