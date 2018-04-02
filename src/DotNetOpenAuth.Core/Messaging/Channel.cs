@@ -338,7 +338,7 @@ namespace DotNetOpenAuth.Messaging {
 		/// </summary>
 		/// <param name="message">The one-way message to send</param>
 		/// <returns>The pending user agent redirect based message to be sent as an HttpResponse.</returns>
-		public OutgoingWebResponse PrepareResponse(IProtocolMessage message, Func<object, object> callback = null) {
+		public OutgoingWebResponse PrepareResponse(IProtocolMessage message) {
 			Requires.NotNull(message, "message");
 			Contract.Ensures(Contract.Result<OutgoingWebResponse>() != null);
 
@@ -376,11 +376,6 @@ namespace DotNetOpenAuth.Messaging {
 			// caching can be utilized in identity spoofing attacks.
 			result.Headers[HttpResponseHeader.CacheControl] = "no-cache, no-store, max-age=0, must-revalidate";
 			result.Headers[HttpResponseHeader.Pragma] = "no-cache";
-
-            if(callback != null)
-            {
-                callback(message);
-            }
 
 			return result;
 		}

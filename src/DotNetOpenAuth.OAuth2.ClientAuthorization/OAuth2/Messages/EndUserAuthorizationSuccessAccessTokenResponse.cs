@@ -19,25 +19,25 @@ namespace DotNetOpenAuth.OAuth2.Messages {
 	/// to indicate that user authorization was granted, carrying only an access token,
 	/// and to return the user to the Client where they started their experience.
 	/// </summary>
-	public class EndUserAuthorizationSuccessAccessTokenResponse : EndUserAuthorizationSuccessResponseBase, IAccessTokenIssuingResponse, IHttpIndirectResponse {
-		/// <summary>
-		/// Initializes a new instance of the <see cref="EndUserAuthorizationSuccessAccessTokenResponse"/> class.
-		/// </summary>
-		/// <param name="clientCallback">The URL to redirect to so the client receives the message. This may not be built into the request message if the client pre-registered the URL with the authorization server.</param>
-		/// <param name="version">The protocol version.</param>
-		public EndUserAuthorizationSuccessAccessTokenResponse(Uri clientCallback, Version version)
+	internal class EndUserAuthorizationSuccessAccessTokenResponse : EndUserAuthorizationSuccessResponseBase, IAccessTokenIssuingResponse, IHttpIndirectResponse {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EndUserAuthorizationSuccessAccessTokenResponse"/> class.
+        /// </summary>
+        /// <param name="clientCallback">The URL to redirect to so the client receives the message. This may not be built into the request message if the client pre-registered the URL with the authorization server.</param>
+        /// <param name="version">The protocol version.</param>
+        internal EndUserAuthorizationSuccessAccessTokenResponse(Uri clientCallback, Version version)
 			: base(clientCallback, version) {
 			Requires.NotNull(version, "version");
 			Requires.NotNull(clientCallback, "clientCallback");
 			this.TokenType = Protocol.AccessTokenTypes.Bearer;
 		}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="EndUserAuthorizationSuccessAccessTokenResponse"/> class.
-		/// </summary>
-		/// <param name="clientCallback">The URL to redirect to so the client receives the message. This may not be built into the request message if the client pre-registered the URL with the authorization server.</param>
-		/// <param name="request">The authorization request from the user agent on behalf of the client.</param>
-		public EndUserAuthorizationSuccessAccessTokenResponse(Uri clientCallback, EndUserAuthorizationRequest request)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EndUserAuthorizationSuccessAccessTokenResponse"/> class.
+        /// </summary>
+        /// <param name="clientCallback">The URL to redirect to so the client receives the message. This may not be built into the request message if the client pre-registered the URL with the authorization server.</param>
+        /// <param name="request">The authorization request from the user agent on behalf of the client.</param>
+        internal EndUserAuthorizationSuccessAccessTokenResponse(Uri clientCallback, EndUserAuthorizationRequest request)
 			: base(clientCallback, request) {
 			Requires.NotNull(clientCallback, "clientCallback");
 			Requires.NotNull(request, "request");
@@ -117,8 +117,7 @@ namespace DotNetOpenAuth.OAuth2.Messages {
 		/// </summary>
 		/// <value>The lifetime.</value>
 		[MessagePart(Protocol.expires_in, IsRequired = false, Encoder = typeof(TimespanSecondsEncoder))]
-		public TimeSpan? Lifetime { get; set; }
-
-        public DateTime? UtcIssued { get; set; }
+        internal TimeSpan? Lifetime { get; set; }
+        internal DateTime? UtcIssued { get; set; }
 	}
 }

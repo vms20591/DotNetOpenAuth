@@ -5,6 +5,9 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
   <Import Project="$(ProjectRoot)tools\DotNetOpenAuth.props" />
   <PropertyGroup>
     <SchemaVersion>2.0</SchemaVersion>
@@ -14,6 +17,7 @@
   </PropertyGroup>
   <Import Project="$(ProjectRoot)tools\DotNetOpenAuth.Product.props" />
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DefineConstants>TRACE;DEBUG;StrongNameSigned;CLR4</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
   </PropertyGroup>
@@ -21,6 +25,8 @@
     <Compile Include="Configuration\OAuth2SectionGroup.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="OAuth2\AccessToken.cs" />
+    <Compile Include="OAuth2\AccessTokenWrapper.cs" />
+    <Compile Include="OAuth2\AuthorizationCodeWrapper.cs" />
     <Compile Include="OAuth2\ChannelElements\AuthorizationDataBag.cs" />
     <Compile Include="OAuth2\ChannelElements\ClientAuthenticationResult.cs" />
     <Compile Include="OAuth2\ChannelElements\IAccessTokenCarryingRequest.cs" />
@@ -52,7 +58,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DotNetOpenAuth.Core\DotNetOpenAuth.Core.csproj">
-      <Project>{60426312-6AE5-4835-8667-37EDEA670222}</Project>
+      <Project>{60426312-6ae5-4835-8667-37edea670222}</Project>
       <Name>DotNetOpenAuth.Core</Name>
     </ProjectReference>
   </ItemGroup>

@@ -143,62 +143,92 @@ namespace DotNetOpenAuth.OAuth2 {
 		}
 #endif
 
-		/// <summary>
-		/// Handles an incoming request to the authorization server's token endpoint.
-		/// </summary>
-		/// <param name="request">The HTTP request.</param>
-		/// <returns>The HTTP response to send to the client.</returns>
-		public OutgoingWebResponse HandleTokenRequest(HttpRequestBase request = null, Func<object, object> callback = null) {
-			if (request == null) {
-				request = this.Channel.GetRequestFromContext();
-			}
+        /// <summary>
+        /// Handles an incoming request to the authorization server's token endpoint.
+        /// </summary>
+        /// <param name="request">The HTTP request.</param>
+        /// <returns>The HTTP response to send to the client.</returns>
+        public OutgoingWebResponse HandleTokenRequest(HttpRequestBase request = null, AccessTokenWrapper accessTokenWrapper = null) {
+            if (request == null)
+            {
+                request = this.Channel.GetRequestFromContext();
+            }
 
-			AccessTokenRequestBase requestMessage;
-			IProtocolMessage responseMessage;
-			try {
-				if (this.Channel.TryReadFromRequest(request, out requestMessage)) {
-					var accessTokenResult = this.AuthorizationServerServices.CreateAccessToken(requestMessage);
-					ErrorUtilities.VerifyHost(accessTokenResult != null, "IAuthorizationServerHost.CreateAccessToken must not return null.");
-
-					IAccessTokenRequestInternal accessRequestInternal = requestMessage;
-					accessRequestInternal.AccessTokenResult = accessTokenResult;
-
-					var successResponseMessage = this.PrepareAccessTokenResponse(requestMessage, accessTokenResult.AllowRefreshToken);
-					successResponseMessage.Lifetime = accessTokenResult.AccessToken.Lifetime;
-                    accessTokenResult.AllowRefreshToken = successResponseMessage.HasRefreshToken;
-
-					var authCarryingRequest = requestMessage as IAuthorizationCarryingRequest;
-					if (authCarryingRequest != null) {
-						accessTokenResult.AccessToken.ApplyAuthorization(authCarryingRequest.AuthorizationDescription);
-						IAccessTokenIssuingResponse accessTokenIssuingResponse = successResponseMessage;
-						accessTokenIssuingResponse.AuthorizationDescription = accessTokenResult.AccessToken;
-					}
-
-					responseMessage = successResponseMessage;
-
-                    if (callback != null)
-                    {
-                        callback(accessTokenResult);
-                    }
-                } else {
-					responseMessage = new AccessTokenFailedResponse() { Error = Protocol.AccessTokenRequestErrorCodes.InvalidRequest };
-				}
-			} catch (TokenEndpointProtocolException ex) {
-				responseMessage = ex.GetResponse();
-			} catch (ProtocolException) {
-				responseMessage = new AccessTokenFailedResponse() { Error = Protocol.AccessTokenRequestErrorCodes.InvalidRequest };
-			}
-
-			return this.Channel.PrepareResponse(responseMessage);
+            return this.HandleTokenRequestWrapper(request, out accessTokenWrapper);
 		}
 
-		/// <summary>
-		/// Prepares a response to inform the Client that the user has rejected the Client's authorization request.
-		/// </summary>
-		/// <param name="authorizationRequest">The authorization request.</param>
-		/// <param name="callback">The Client callback URL to use when formulating the redirect to send the user agent back to the Client.</param>
-		/// <returns>The authorization response message to send to the Client.</returns>
-		public EndUserAuthorizationFailedResponse PrepareRejectAuthorizationRequest(EndUserAuthorizationRequest authorizationRequest, Uri callback = null) {
+        public OutgoingWebResponse HandleTokenRequestWrapper(HttpRequestBase request, out AccessTokenWrapper accessTokenWrapper)
+        {
+            AccessTokenRequestBase requestMessage;
+            IProtocolMessage responseMessage;
+            AccessTokenResult accessTokenResult = null;
+            AccessTokenSuccessResponse successResponseMessage = null;
+            accessTokenWrapper = null;
+            try
+            {
+                if (this.Channel.TryReadFromRequest(request, out requestMessage))
+                {
+                    accessTokenResult = this.AuthorizationServerServices.CreateAccessToken(requestMessage);
+                    ErrorUtilities.VerifyHost(accessTokenResult != null, "IAuthorizationServerHost.CreateAccessToken must not return null.");
+
+                    IAccessTokenRequestInternal accessRequestInternal = requestMessage;
+                    accessRequestInternal.AccessTokenResult = accessTokenResult;
+
+                    successResponseMessage = this.PrepareAccessTokenResponse(requestMessage, accessTokenResult.AllowRefreshToken);
+                    successResponseMessage.Lifetime = accessTokenResult.AccessToken.Lifetime;
+                    accessTokenResult.AllowRefreshToken = successResponseMessage.HasRefreshToken;
+
+                    var authCarryingRequest = requestMessage as IAuthorizationCarryingRequest;
+                    if (authCarryingRequest != null)
+                    {
+                        accessTokenResult.AccessToken.ApplyAuthorization(authCarryingRequest.AuthorizationDescription);
+                        IAccessTokenIssuingResponse accessTokenIssuingResponse = successResponseMessage;
+                        accessTokenIssuingResponse.AuthorizationDescription = accessTokenResult.AccessToken;
+                    }
+
+                    responseMessage = successResponseMessage;
+                }
+                else
+                {
+                    responseMessage = new AccessTokenFailedResponse() { Error = Protocol.AccessTokenRequestErrorCodes.InvalidRequest };
+                }
+            }
+            catch (TokenEndpointProtocolException ex)
+            {
+                responseMessage = ex.GetResponse();
+            }
+            catch (ProtocolException)
+            {
+                responseMessage = new AccessTokenFailedResponse() { Error = Protocol.AccessTokenRequestErrorCodes.InvalidRequest };
+            }
+
+            var channelResponse = this.Channel.PrepareResponse(responseMessage);
+
+            if(accessTokenResult != null && successResponseMessage != null)
+            {
+                accessTokenWrapper = new AccessTokenWrapper();
+
+                accessTokenWrapper.AccessToken = successResponseMessage.AccessToken;
+                accessTokenWrapper.RefreshToken = successResponseMessage.RefreshToken;
+                accessTokenWrapper.Lifetime = successResponseMessage.Lifetime.GetValueOrDefault();
+                accessTokenWrapper.Scope = successResponseMessage.Scope;
+                accessTokenWrapper.TokenType = successResponseMessage.TokenType;
+
+                accessTokenWrapper.ClientIdentifier = accessTokenResult.AccessToken.ClientIdentifier;
+                accessTokenWrapper.User = accessTokenResult.AccessToken.User;
+                accessTokenWrapper.UtcCreationDate = accessTokenResult.AccessToken.UtcIssued;
+            }
+
+            return channelResponse;
+        }
+
+        /// <summary>
+        /// Prepares a response to inform the Client that the user has rejected the Client's authorization request.
+        /// </summary>
+        /// <param name="authorizationRequest">The authorization request.</param>
+        /// <param name="callback">The Client callback URL to use when formulating the redirect to send the user agent back to the Client.</param>
+        /// <returns>The authorization response message to send to the Client.</returns>
+        public EndUserAuthorizationFailedResponse PrepareRejectAuthorizationRequest(EndUserAuthorizationRequest authorizationRequest, Uri callback = null) {
 			Requires.NotNull(authorizationRequest, "authorizationRequest");
 			Contract.Ensures(Contract.Result<EndUserAuthorizationFailedResponse>() != null);
 
@@ -272,19 +302,53 @@ namespace DotNetOpenAuth.OAuth2 {
 			return response;
 		}
 
-		/// <summary>
-		/// Decodes a refresh token into its authorization details.
-		/// </summary>
-		/// <param name="refreshToken">The encoded refresh token as it would appear to the client.</param>
-		/// <returns>A description of the authorization represented by the refresh token.</returns>
-		/// <exception cref="ProtocolException">Thrown if the refresh token is not valid due to expiration, corruption or not being authentic.</exception>
-		/// <remarks>
-		/// This can be useful if the authorization server supports the client revoking its own access (on uninstall, for example).
-		/// Outside the scope of the OAuth 2 spec, the client may contact the authorization server host requesting that its refresh
-		/// token be revoked.  The authorization server would need to decode the refresh token so it knows which authorization in
-		/// the database to delete.
-		/// </remarks>
-		public IAuthorizationDescription DecodeRefreshToken(string refreshToken) {
+        public OutgoingWebResponse PrepareApproveAuthorizationRequestWrapper(EndUserAuthorizationRequest authorizationRequest, string userName, out AccessTokenWrapper accessTokenWrapper, out AuthorizationCodeWrapper authorizationCodeWrapper)
+        {
+            accessTokenWrapper = null;
+            authorizationCodeWrapper = null;
+
+            var endUserResponse = this.PrepareApproveAuthorizationRequest(authorizationRequest, userName);
+
+            var response = this.Channel.PrepareResponse(endUserResponse);
+
+            if (endUserResponse is EndUserAuthorizationSuccessAccessTokenResponse)
+            {
+                var resp = (EndUserAuthorizationSuccessAccessTokenResponse)endUserResponse;
+
+                accessTokenWrapper = new AccessTokenWrapper();
+
+                accessTokenWrapper.AccessToken = resp.AccessToken;
+                accessTokenWrapper.TokenType = resp.TokenType;
+                accessTokenWrapper.Lifetime = resp.Lifetime.GetValueOrDefault();
+                accessTokenWrapper.Scope = OAuthUtilities.ParseScopeSet(resp.Scope.ToArray());
+                accessTokenWrapper.UtcCreationDate = resp.UtcIssued.GetValueOrDefault();
+            }
+            else if(endUserResponse is EndUserAuthorizationSuccessAuthCodeResponseAS)
+            {
+                var resp = (EndUserAuthorizationSuccessAuthCodeResponseAS)endUserResponse;
+
+                authorizationCodeWrapper = new AuthorizationCodeWrapper();
+
+                authorizationCodeWrapper.AuthorizationCode = resp.AuthorizationCode;
+                authorizationCodeWrapper.Scope = OAuthUtilities.ParseScopeSet(resp.Scope.ToArray());
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Decodes a refresh token into its authorization details.
+        /// </summary>
+        /// <param name="refreshToken">The encoded refresh token as it would appear to the client.</param>
+        /// <returns>A description of the authorization represented by the refresh token.</returns>
+        /// <exception cref="ProtocolException">Thrown if the refresh token is not valid due to expiration, corruption or not being authentic.</exception>
+        /// <remarks>
+        /// This can be useful if the authorization server supports the client revoking its own access (on uninstall, for example).
+        /// Outside the scope of the OAuth 2 spec, the client may contact the authorization server host requesting that its refresh
+        /// token be revoked.  The authorization server would need to decode the refresh token so it knows which authorization in
+        /// the database to delete.
+        /// </remarks>
+        public IAuthorizationDescription DecodeRefreshToken(string refreshToken) {
 			var refreshTokenFormatter = RefreshToken.CreateFormatter(this.AuthorizationServerServices.CryptoKeyStore);
 			var token = new RefreshToken();
 			refreshTokenFormatter.Deserialize(token, refreshToken);
